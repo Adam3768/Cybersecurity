@@ -1,65 +1,16 @@
-# TryHackMe - Recruit
+# Recruit
 
-[![TryHackMe](https://img.shields.io/badge/TryHackMe-Recruit-red?logo=tryhackme&logoColor=white)](https://tryhackme.com/room/recruitwebchallenge)
-![Difficulty](https://img.shields.io/badge/Difficulty-Medium-orange)
+**Difficulty:** 🟡 Medium · **Room:** [TryHackMe ↗](https://tryhackme.com/room/recruitwebchallenge)
 
----
+**Recruit** has just launched its new recruitment portal, allowing HR staff to manage candidate applications and administrators to oversee hiring decisions. While the platform appears functional, management suspects that security may have been overlooked during development. Your task is to assess the application like a real attacker, mapping its structure, abusing exposed functionality, and exploiting vulnerabilities.
 
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Attack Path Overview](#attack-path-overview)
-3. [Enumeration](#enumeration)
-4. [Initial Access](#initial-access)
-5. [SQL Injection](#sql-injection)
-6. [Vulnerabilities Exploited](#vulnerabilities-exploited)
-7. [Tools Used](#tools-used)
-8. [Lessons Learned](#lessons-learned)
-9. [References](#references)
-10. [Disclaimer](#disclaimer)
+Can you gain an initial foothold, escalate your access, and ultimately log in as the **administrator**?
 
 ---
 
-## Overview
+## Reconnaissance
 
-This write-up documents my methodology for completing the **Recruit** room on TryHackMe, a medium-difficulty web application challenge modeled on a recruitment portal.
-
-The objective was to capture both the **User** and **Admin** flags. This was achieved by enumerating the application, exploiting a **Local File Inclusion (LFI)** vulnerability to disclose application source code and credentials, and subsequently leveraging **UNION-based SQL Injection** to extract administrator credentials from the backend database.
-
----
-
-## Attack Path Overview
-
-```mermaid
-flowchart LR
-    A[Nmap Scan] --> B[Directory Enumeration]
-    B --> C[mail.log Disclosed]
-    C --> D[LFI via file.php]
-    D --> E[config.php Disclosed]
-    E --> F[HR Login]
-    F --> G[User Flag]
-    G --> H[SQL Injection<br/>in Search Function]
-    H --> I[Database Enumeration]
-    I --> J[Admin Credentials]
-    J --> K[Admin Flag]
-```
-
-| Stage | Technique | Outcome |
-|---|---|---|
-| 1 | Port and service enumeration | Identified SSH, DNS, HTTP |
-| 2 | Directory brute-forcing | Discovered exposed `mail.log` |
-| 3 | Local File Inclusion (`file.php`) | Disclosed `config.php` credentials |
-| 4 | Authentication as `hr` | Retrieved User flag |
-| 5 | UNION-based SQL injection | Enumerated database, extracted admin credentials |
-| 6 | Authentication as administrator | Retrieved Admin flag |
-
----
-
-## Enumeration
-
-### Port and Service Scanning
-
-A TCP connect scan with default script enumeration was run first to establish the attack surface:
+I started with a TCP connect scan and default script enumeration to see the attack surface:
 
 ```bash
 nmap -sT -sC TARGET-IP
@@ -75,21 +26,19 @@ nmap -sT -sC TARGET-IP
 
 ![Nmap Scan](screenshots/nmap_scan.png)
 
-With HTTP identified as the primary attack surface, subsequent enumeration focused on the web application.
+With HTTP as the obvious target, I focused the rest of my enumeration on the web application.
 
-### Directory Enumeration
-
-Directory brute-forcing was performed against the web root to surface content not linked from the main application:
+A directory brute-force against the web root turned up content that wasn't linked anywhere in the app itself:
 
 ![Directory Enumeration](screenshots/directory_bruteforce.png)
 
-This uncovered an exposed application log:
+That's how I found an exposed log file:
 
 ```
 http://TARGET-IP/mail/mail.log
 ```
 
-The log disclosed two useful pieces of information: a valid application username, **hr**, and a reference indicating that credentials were stored in `config.php` — a strong hint that a file disclosure vulnerability would be the next step.
+The log gave me two useful things: a valid application username, **hr**, and a reference to credentials being stored in `config.php` — a strong hint that a file disclosure bug was the next step.
 
 ![Mail Log](screenshots/mail_info.png)
 
@@ -97,15 +46,13 @@ The log disclosed two useful pieces of information: a valid application username
 
 ## Initial Access
 
-### Identifying the LFI Vector
-
-Further exploration of the application surfaced an API endpoint:
+Poking around further, I found an API endpoint:
 
 ```
 http://TARGET-IP/api.php
 ```
 
-This endpoint indicated that a candidate's CV was retrieved through a separate file-fetching endpoint:
+This showed that a candidate's CV was fetched through a separate endpoint:
 
 ```
 /file.php?cv=<URL>
@@ -113,21 +60,19 @@ This endpoint indicated that a candidate's CV was retrieved through a separate f
 
 ![API Endpoint](screenshots/fetch_info.png)
 
-Passing local paths and stream wrappers into the `cv` parameter confirmed a **Local File Inclusion (LFI)** vulnerability, as the endpoint failed to restrict retrieval to remote or expected file locations.
+Passing local paths and stream wrappers into the `cv` parameter confirmed a **Local File Inclusion (LFI)** vulnerability — the endpoint wasn't restricting retrieval to remote or expected file locations at all.
 
-### Exploiting the LFI
-
-Using the `file://` wrapper, the previously referenced configuration file was requested directly:
+Using the `file://` wrapper, I requested the config file the log had pointed me toward:
 
 ```
 http://TARGET-IP/file.php?cv=file:////var/www/html/config.php
 ```
 
-The response disclosed valid application credentials in plaintext.
+The response gave up valid application credentials in plaintext.
 
 ![Retrieved Credentials](screenshots/hr_pass.png)
 
-These credentials were used to authenticate as **hr**, yielding the **User flag**.
+I used those to log in as **hr**, which got me the **User flag**.
 
 ![User Flag](screenshots/user_flag.png)
 
@@ -135,80 +80,45 @@ These credentials were used to authenticate as **hr**, yielding the **User flag*
 
 ## SQL Injection
 
-With authenticated access as `hr`, attention turned to the application's internal search functionality, which appeared to query the backend database directly.
+Once logged in as `hr`, I turned my attention to the app's internal search feature, which looked like it was querying the database directly.
 
-Testing the search parameter with standard SQL injection payloads confirmed that it was vulnerable to **UNION-based SQL Injection**.
+Testing the search parameter with standard SQL injection payloads confirmed it was vulnerable to **UNION-based SQL Injection**.
 
 ![SQL Injection Confirmed](screenshots/sql_injection_confirmed.png)
 
-### Column Enumeration
-
-Before extracting data, the number of columns returned by the underlying query had to be determined so that a matching `UNION SELECT` could be crafted:
+Before I could pull any data, I needed to figure out how many columns the underlying query returned, so I could build a matching `UNION SELECT`:
 
 ![UNION Enumeration](screenshots/sql_injection_union.png)
 
-### Database and Table Enumeration
-
-With a working `UNION SELECT`, the injection point was used to enumerate the database schema, starting with the available tables:
+With that sorted, I used the injection point to enumerate the database schema, starting with the available tables:
 
 ![Database Tables](screenshots/tables_names.png)
 
-The `users` table stood out as the likely source of authentication data. Its columns were enumerated next:
+The `users` table looked like the obvious place to find login data, so I enumerated its columns next:
 
 ![Users Table Columns](screenshots/columns_names.png)
 
-### Extracting Administrator Credentials
-
-With the relevant table and column names identified, the injection was used to extract stored administrator credentials directly from the `users` table:
+With the table and column names in hand, I extracted the administrator credentials directly from `users`:
 
 ![Administrator Credentials](screenshots/admin_pass.png)
 
-Authenticating with the recovered credentials granted administrator access and the **Admin flag**, completing the room.
+Logging in with those credentials gave me administrator access and the **Admin flag**, completing the room.
 
 ![Admin Flag](screenshots/admin_flag.png)
 
 ---
 
-## Vulnerabilities Exploited
+## Kill Chain
 
-| Vulnerability | Impact |
-|---|---|
-| Local File Inclusion (LFI) | Allowed arbitrary file disclosure, including application source and credentials |
-| UNION-based SQL Injection | Enabled full database schema enumeration and credential extraction |
-| Plaintext credentials in `config.php` | Provided valid application credentials once file disclosure was achieved |
+This box came down to two separate bugs that each did half the work. Directory brute-forcing turned up a log file that was never meant to be public, and that log pointed straight at a config file holding real credentials — I just needed a way to actually read it. The application's own CV-fetching feature provided that, since it accepted a `file://` path with no restriction at all.
 
----
+Getting from a regular HR account to full admin was a completely separate issue: an internal search feature built its SQL queries by concatenating user input directly, so a standard UNION-based injection was enough to read straight out of the `users` table.
 
-## Tools Used
+`Anonymous visitor → hr (via LFI) → administrator (via SQL injection)`
 
-| Tool | Purpose |
-|---|---|
-| Nmap | Port and service enumeration |
-| Directory brute-forcer | Discovery of hidden files and endpoints |
-| Browser / Burp Suite | Manual request crafting and LFI/SQLi testing |
-| Manual UNION-based SQL Injection | Database enumeration and credential extraction |
+- **Initial Access:** Exposed log file → disclosed config path → LFI via the CV-fetch endpoint → plaintext credentials → login as `hr`
+- **Privilege Escalation:** UNION-based SQL injection in the search feature → database and table enumeration → extracted administrator credentials → full admin access
 
----
+Neither vulnerability here was particularly advanced — an unrestricted file-fetch parameter and an unsanitized search query — but between them they took an anonymous visitor all the way to administrator.
 
-## Lessons Learned
-
-- Thorough enumeration — including logs and other auxiliary files — can surface information (usernames, file paths) that becomes critical later in the attack chain.
-- Endpoints that fetch files based on user-supplied input must strictly validate and whitelist sources; unrestricted wrappers like `file://` turn a "remote fetch" feature into a file disclosure vulnerability.
-- Sensitive configuration files, including database credentials, should never be reachable through application logic that accepts user-controlled paths.
-- UNION-based SQL Injection remains an effective and reliable technique for enumerating database structure and exfiltrating data when input is not parameterized.
-- Individually moderate findings (an info leak, a file inclusion bug, an injection point) can be chained together into full compromise — each step should be evaluated for how it enables the next.
-
----
-
-## References
-
-- [TryHackMe — Recruit](https://tryhackme.com/room/recruitwebchallenge)
-- [OWASP — SQL Injection](https://owasp.org/www-community/attacks/SQL_Injection)
-- [OWASP — Path Traversal](https://owasp.org/www-community/attacks/Path_Traversal)
-- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
-
----
-
-## Disclaimer
-
-This write-up documents my personal approach to completing the **Recruit** room on TryHackMe. All testing was performed exclusively within the authorized TryHackMe lab environment for educational and skill-development purposes.
+> Thanks for reading!
