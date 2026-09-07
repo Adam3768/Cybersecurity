@@ -2,16 +2,16 @@
 
 **Difficulty:** 🟡 Medium · **Room:** [TryHackMe ↗](https://tryhackme.com/room/forwardchallenge)
 
-<center><b>[ INITIAL ACCESS GRANTED ]</b></center>
+<p align='center'><b>[ INITIAL ACCESS GRANTED ]</b></p>
 
 ---
 
-<center><b>USER</b> ctf.local\j.smith
-<b>PASS</b> > JSmith@IT2024</center>
+<p align='center'><b>USER</b> ctf.local\j.smith
+<b>PASS</b> > JSmith@IT2024</p>
 
 ---
 
-<center>You're already in. The breach has been assumed, now it's time to move forward. Navigate through a compromised Active Directory environment, move laterally through the domain, and escalate your way to full control. The question isn't how you got in... it's how far you can go.</center>
+<p align='center'>You're already in. The breach has been assumed, now it's time to move forward. Navigate through a compromised Active Directory environment, move laterally through the domain, and escalate your way to full control. The question isn't how you got in... it's how far you can go.</p>
 
 ---
 
@@ -134,4 +134,4 @@ This box started with credentials handed over up front, so the whole exercise wa
 
 The technical parts of this chain (KeePass extraction, RBCD) needed some know-how, but the thing that made them possible in the first place was simpler: a password saved in a database that shouldn't have been reachable, and that same password reused on another account.
 
-> Thanks for reading!================
+> Thanks for reading!
