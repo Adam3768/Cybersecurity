@@ -31,7 +31,7 @@ Invalid formats are ignored.
 
 So anything dropped into `incoming/` gets picked up automatically. Since I already had write access to that folder over FTP, I uploaded a reverse shell script with `put` and got a callback — along with the `recon_user` flag:
 
-![First flag](images/first_flag.png)
+![First flag](TryHackMe/Easy/Jump/images/first_flag.png)
 
 Reverse shell used:
 
@@ -59,7 +59,7 @@ tar -czf /tmp/recon_backup.tgz /home/recon_user
 
 Turns out anyone in the `dev_user` group could edit this script — and `recon_user` happened to be in that group. So I overwrote `backup.sh` with a reverse shell payload, waited for the next scheduled run, and caught a shell as `dev_user`:
 
-![Second flag](images/second_flag.png)
+![Second flag](TryHackMe/Easy/Jump/images/second_flag.png)
 
 Reverse shell used:
 

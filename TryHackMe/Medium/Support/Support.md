@@ -52,7 +52,7 @@ Problems signing in? Contact IT Operations @ help@support.thm
 
 That gave me a valid application email, `help@support.thm`, which I'd use later for brute-forcing.
 
-![Login Page](images/login_page.png)
+![Login Page](TryHackMe/Medium/Support/images/login_page.png)
 
 I ran **Feroxbuster** and **Gobuster** in parallel against the web root, which surfaced a few endpoints worth checking out:
 

@@ -77,7 +77,7 @@ The site's `admin` link redirected to the CMS login page:
 http://TARGET_IP/app/pluck-4.7.13/login.php
 ```
 
-![Login Page](images/login_page.png)
+![Login Page](TryHackMe/Easy/Dreaming/images/login_page.png)
 
 I tried a few common, weak passwords, and one worked on the first attempt:
 
