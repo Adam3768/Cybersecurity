@@ -17,7 +17,7 @@ An `nmap` scan turned up two open ports:
 
 Port 21 was open with FTP running, so I tried logging in anonymously — and it worked straight away:
 
-![FTP login](images/ftp_anonymous.png)
+![FTP login](TryHackMe/Easy/Jump/images/ftp_anonymous.png)
 
 Browsing the FTP server, I found a file called `README.txt`:
 
@@ -86,7 +86,7 @@ I also noticed a `ps` binary sitting in `/opt/dev/bin`, owned by `dev_user`. Sin
 
 So I dropped a reverse shell into `/opt/dev/bin/ps`, made it executable, and waited. The next time `healthcheck` ran, it executed my fake `ps` instead of the real one, giving me a shell as `monitor_user`:
 
-![Third flag](images/third_flag.png)
+![Third flag](TryHackMe/Easy/Jump/images/third_flag.png)
 
 Reverse shell used:
 
@@ -119,7 +119,7 @@ cd /opt/app 2>/dev/null
 
 I found `deploy_helper.sh` sitting in `/opt/app` — and it was owned by `monitor_user`, the account I'd just gotten into. That meant I could overwrite it with a reverse shell, run `deploy.sh` via `sudo`, and have my payload execute as `ops_user`. Sure enough, that's exactly what happened:
 
-![Fourth flag](images/fourth_flag.png)
+![Fourth flag](TryHackMe/Easy/Jump/images/fourth_flag.png)
 
 Reverse shell used:
 
@@ -172,7 +172,7 @@ sudo less flag.txt
 
 From inside `less`, typing `!` followed by `/bin/bash` dropped me into a root shell:
 
-![Root](images/root.png)
+![Root](TryHackMe/Easy/Jump/images/root.png)
 
 ---
 

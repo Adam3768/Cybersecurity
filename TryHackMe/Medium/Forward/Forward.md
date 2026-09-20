@@ -25,7 +25,7 @@ nxc smb TARGET_IP -u j.smith -p JSmith@IT2024 --generate-host-file host
 
 I added the contents of `host` to `/etc/hosts`, then ran an nmap scan:
 
-![Nmap scan](images/nmap_scan.png)
+![Nmap scan](TryHackMe/Medium/Forward/images/nmap_scan.png)
 
 This looked like a standard domain controller — nothing unusual. For a better picture of the domain, I ran BloodHound:
 
