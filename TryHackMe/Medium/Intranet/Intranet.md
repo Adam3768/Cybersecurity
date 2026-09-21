@@ -19,11 +19,11 @@ There's `http` on both port `80` and `8080`. `FTP` runs on port `21`, `SSH` on `
 
 I also ran `feroxbuster` to check for existing directories:
 
-![](TryHackMe/Medium/Intranet/images/ferox_scan.png)
+![](images/ferox_scan.png)
 
 This showed that the `MACHINE_IP:8080/login` endpoint exists, so I visited it, and a login page appeared:
 
-![](TryHackMe/Medium/Intranet/images/login_page.png)
+![](images/login_page.png)
 
 ---
 
@@ -93,7 +93,7 @@ john --wordlist=base_words.txt --rules=All --stdout > passwords.txt
 Running `hydra` again with this custom wordlist succeeded — I recovered `anders`' password and the first flag:
 
 ![](images/anders_pass.png)
-![](TryHackMe/Medium/Intranet/images/first_flag.png)
+![](images/first_flag.png)
 
 ---
 
@@ -136,7 +136,7 @@ ffuf -w codes.txt \
 
 With the code, I could fully authenticate as `anders` and grab the second flag:
 
-![](TryHackMe/Medium/Intranet/images/second_flag.png)
+![](images/second_flag.png)
 
 ---
 
@@ -171,7 +171,7 @@ By setting `news` to `../../proc/self/cmdline` — which contains information ab
 
 I used the LFI to read the application's source code, which gave me the third flag:
 
-![](TryHackMe/Medium/Intranet/images/third_flag.png)
+![](images/third_flag.png)
 
 The source code showed that only `anders` could log in normally. But since the app used Flask session cookies, I looked for how the signing key was generated, and found this:
 
@@ -199,7 +199,7 @@ I used `hashcat` to find the correct key:
 
 With the real signing key, I could generate my own valid session cookie and swap it in for my current one. This let me log in as admin, which gave me the fourth flag:
 
-![](TryHackMe/Medium/Intranet/images/fourth_flag.png)
+![](images/fourth_flag.png)
 
 ---
 
@@ -297,7 +297,7 @@ sudo /sbin/service apache2 restart
 
 This gave me a shell as root:
 
-![](TryHackMe/Medium/Intranet/images/root.png)
+![](images/root.png)
 
 ---
 

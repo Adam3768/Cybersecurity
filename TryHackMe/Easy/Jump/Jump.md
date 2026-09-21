@@ -17,7 +17,7 @@ An `nmap` scan turned up two open ports:
 
 Port 21 was open with FTP running, so I tried logging in anonymously — and it worked straight away:
 
-![FTP login](TryHackMe/Easy/Jump/images/ftp_anonymous.png)
+![FTP login](images/ftp_anonymous.png)
 
 Browsing the FTP server, I found a file called `README.txt`:
 
@@ -31,7 +31,7 @@ Invalid formats are ignored.
 
 So anything dropped into `incoming/` gets picked up automatically. Since I already had write access to that folder over FTP, I uploaded a reverse shell script with `put` and got a callback — along with the `recon_user` flag:
 
-![First flag](TryHackMe/Easy/Jump/images/first_flag.png)
+![First flag](images/first_flag.png)
 
 Reverse shell used:
 
@@ -59,7 +59,7 @@ tar -czf /tmp/recon_backup.tgz /home/recon_user
 
 Turns out anyone in the `dev_user` group could edit this script — and `recon_user` happened to be in that group. So I overwrote `backup.sh` with a reverse shell payload, waited for the next scheduled run, and caught a shell as `dev_user`:
 
-![Second flag](TryHackMe/Easy/Jump/images/second_flag.png)
+![Second flag](images/second_flag.png)
 
 Reverse shell used:
 
@@ -86,7 +86,7 @@ I also noticed a `ps` binary sitting in `/opt/dev/bin`, owned by `dev_user`. Sin
 
 So I dropped a reverse shell into `/opt/dev/bin/ps`, made it executable, and waited. The next time `healthcheck` ran, it executed my fake `ps` instead of the real one, giving me a shell as `monitor_user`:
 
-![Third flag](TryHackMe/Easy/Jump/images/third_flag.png)
+![Third flag](images/third_flag.png)
 
 Reverse shell used:
 
@@ -119,7 +119,7 @@ cd /opt/app 2>/dev/null
 
 I found `deploy_helper.sh` sitting in `/opt/app` — and it was owned by `monitor_user`, the account I'd just gotten into. That meant I could overwrite it with a reverse shell, run `deploy.sh` via `sudo`, and have my payload execute as `ops_user`. Sure enough, that's exactly what happened:
 
-![Fourth flag](TryHackMe/Easy/Jump/images/fourth_flag.png)
+![Fourth flag](images/fourth_flag.png)
 
 Reverse shell used:
 
@@ -172,7 +172,7 @@ sudo less flag.txt
 
 From inside `less`, typing `!` followed by `/bin/bash` dropped me into a root shell:
 
-![Root](TryHackMe/Easy/Jump/images/root.png)
+![Root](images/root.png)
 
 ---
 

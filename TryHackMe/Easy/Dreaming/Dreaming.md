@@ -65,7 +65,7 @@ This found an application folder:
 /app/pluck-4.7.13
 ```
 
-![Feroxbuster Scan](TryHackMe/Easy/Dreaming/images/ferox_scan.png)
+![Feroxbuster Scan](images/ferox_scan.png)
 
 That path led to a **Pluck CMS** installation:
 
@@ -77,7 +77,7 @@ The site's `admin` link redirected to the CMS login page:
 http://TARGET_IP/app/pluck-4.7.13/login.php
 ```
 
-![Login Page](TryHackMe/Easy/Dreaming/images/login_page.png)
+![Login Page](images/login_page.png)
 
 I tried a few common, weak passwords, and one worked on the first try:
 

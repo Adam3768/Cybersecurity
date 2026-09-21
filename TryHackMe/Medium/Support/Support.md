@@ -29,16 +29,9 @@ Then I ran a follow-up scan with version detection and default scripts against b
 sudo nmap TARGET-IP -p 22,80 -sC -sV
 ```
 
-**Results:**
-
-| Port | Service | Version |
-|---:|---|---|
-| 22 | SSH | OpenSSH 9.6p1 |
-| 80 | HTTP | Apache 2.4.58 |
-
 The web service turned out to be a **Support Operations Panel**. Nmap's script output also flagged that the `PHPSESSID` cookie was missing the `HttpOnly` flag — a small thing on its own, but a hint that cookie handling here was worth a closer look later.
 
-![Nmap Scan](TryHackMe/Easy/Proxy/images/nmap_scan.png)
+![](images/nmap_scan.png)
 
 ---
 
@@ -52,7 +45,7 @@ Problems signing in? Contact IT Operations @ help@support.thm
 
 That gave me a valid application email, `help@support.thm`, which I'd use later for brute-forcing.
 
-![Login Page](TryHackMe/Medium/Support/images/login_page.png)
+![Login Page](images/login_page.png)
 
 I ran **Feroxbuster** and **Gobuster** in parallel against the web root, which surfaced a few endpoints worth checking out:
 
@@ -63,7 +56,7 @@ I ran **Feroxbuster** and **Gobuster** in parallel against the web root, which s
 /skins/
 ```
 
-![Ferox Scan](TryHackMe/Medium/Support/images/ferox_scan.png)
+![Ferox Scan](images/ferox_scan.png)
 ![Gobuster Scan](images/gobuster_scan.png)
 
 ---
@@ -186,7 +179,7 @@ With arbitrary command execution confirmed, I used it to get a reverse shell: pr
 
 That gave me an interactive shell, and with it, the user flag.
 
-![User Flag](images/user_flag.png)
+![User Flag](images/user_flag.pngimages/user_flag.png)
 
 ---
 
