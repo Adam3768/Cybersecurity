@@ -12,7 +12,7 @@ Magnus hired you as a third party to conduct a penetration test of their web app
 
 I started with a simple `nmap` scan to see the whole attack surface:
 
-![](basic_nmap.png)
+![](images/basic_nmap.png)
 
 There's `http` on both port `80` and `8080`. `FTP` runs on port `21`, `SSH` on `22`, `Telnet` on `23`, and `echo` on port `7`. The `echo` service stood out, since it's not commonly used nowadays. I followed up with a more detailed `nmap` scan to gather more information:
 
