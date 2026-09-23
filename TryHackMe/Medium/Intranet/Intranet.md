@@ -19,7 +19,7 @@ There's `http` on both port `80` and `8080`. `FTP` runs on port `21`, `SSH` on `
 
 I also ran `feroxbuster` to check for existing directories:
 
-![](images/ferox_scan.png)
+![](TryHackMe/Medium/Intranet/images/ferox_scan.png)
 
 This showed that the `MACHINE_IP:8080/login` endpoint exists, so I visited it, and a login page appeared:
 

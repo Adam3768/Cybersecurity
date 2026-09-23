@@ -65,7 +65,7 @@ This found an application folder:
 /app/pluck-4.7.13
 ```
 
-![Feroxbuster Scan](images/ferox_scan.png)
+![Feroxbuster Scan](TryHackMe/Easy/Dreaming/images/ferox_scan.png)
 
 That path led to a **Pluck CMS** installation:
 

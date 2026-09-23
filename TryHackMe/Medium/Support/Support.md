@@ -56,7 +56,7 @@ I ran **Feroxbuster** and **Gobuster** in parallel against the web root, which s
 /skins/
 ```
 
-![Ferox Scan](images/ferox_scan.png)
+![Ferox Scan](TryHackMe/Medium/Support/images/ferox_scan.png)
 ![Gobuster Scan](images/gobuster_scan.png)
 
 ---
