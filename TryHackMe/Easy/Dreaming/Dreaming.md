@@ -10,7 +10,7 @@ Can you help Sandman restore his kingdom?</center>
 
 ## Reconnaissance
 
-I started with a full TCP port scan so I wouldn't miss any non-default services:
+I started with a full TCP port scan to determine the attack surface:
 
 ```bash
 sudo nmap -p- TARGET_IP
@@ -40,11 +40,6 @@ PORT   STATE SERVICE VERSION
 |_http-server-header: Apache/2.4.41 (Ubuntu)
 ```
 
-| Port | Service | Version |
-|---:|---|---|
-| 22 | SSH | OpenSSH 8.2p1 |
-| 80 | HTTP | Apache 2.4.41 |
-
 Port 80 was open, so I checked the web page:
 
 ![Apache Default Page](images/deafult_page.png)
@@ -53,7 +48,7 @@ Port 80 was open, so I checked the web page:
 
 ## Enumeration
 
-The page only showed the Apache default page, so I ran a directory brute-force with **feroxbuster** to look for hidden folders:
+The page only showed the Apache default page, so I ran a directory brute-force with `feroxbuster` to look for hidden folders:
 
 ```bash
 feroxbuster -u http://TARGET_IP -w /usr/share/wordlists/dirb/common.txt
@@ -113,7 +108,7 @@ With a listener already running on my machine:
 nc -lvnp 4444
 ```
 
-This gave me an interactive shell as the web server user.
+This gave me an interactive shell as the `www-data`:
 
 ![Reverse Shell](images/rce_poc.png)
 

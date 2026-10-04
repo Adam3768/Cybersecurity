@@ -143,6 +143,4 @@ This box was mostly about following one small clue after another. An anonymous S
 - **Credential Theft:** Abused `File Scanner`'s icon-lookup behavior → captured `svc.scanner`'s NTLMv2 hash with Responder → cracked with John the Ripper
 - **Privilege Escalation:** `svc.scanner`'s `AllowedToDelegate` right on `cifs/DC01` → forged a service ticket impersonating `Administrator` → full domain admin access
 
-The whole chain came down to **information that shouldn't have been public and a service account trusted with more delegation rights than it needed** — neither issue was especially complex on its own, but together they led straight to Administrator.
-
 > Thanks for reading!

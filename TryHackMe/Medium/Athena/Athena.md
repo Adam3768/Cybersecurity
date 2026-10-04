@@ -32,7 +32,7 @@ Next, I ran a more detailed scan against those ports with version detection and 
 nmap MACHINE_IP -p 22,80,139,445 -sV -sC
 ```
 
-**Key results:**
+**Results:**
 
 ![Detailed Nmap Scan](images/detailed_nmap_scan.png)
 
