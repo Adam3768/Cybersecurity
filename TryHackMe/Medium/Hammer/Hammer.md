@@ -77,7 +77,7 @@ So a classic brute-force attack wasn't going to work. That's why I wrote a custo
 <details>
 <summary>Click to see more</summary>
 <pre><code>
-import requests
+```import requests
 
 ip = "10.80.134.14"
 
@@ -152,7 +152,7 @@ def main():
 		else:
 			continue 
 if __name__  == "__main__":
-	main()
+	main()```
 </pre></code>
 </details>
 
