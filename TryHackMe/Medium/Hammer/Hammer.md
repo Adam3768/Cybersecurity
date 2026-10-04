@@ -76,8 +76,9 @@ So a classic brute-force attack wasn't going to work. That's why I wrote a custo
 
 <details>
 <summary>Click to see more</summary>
-<pre><code>
-```import requests
+
+```python
+import requests
 
 ip = "10.80.134.14"
 
@@ -152,20 +153,18 @@ def main():
 		else:
 			continue 
 if __name__  == "__main__":
-	main()```
-</pre></code>
+	main()
+```
+
 </details>
 
 After running the script, it successfully found a valid `PHPSESSID` and code:
 
 ![](images/valid_cookie_code.png)
 
-After that, I replaced my `PHPSESSID`, entered the valid code, and was able to reset the password:
+After that, I replaced my `PHPSESSID`, entered the valid code, and was able to reset the password. I reset the password, logged in, and obtained the first flag:
 
 ![](images/pass_reset.png)
-
- I changed the password, logged in, and obtained the first flag:
-
 ![](images/flag1.png)
 
 ---
