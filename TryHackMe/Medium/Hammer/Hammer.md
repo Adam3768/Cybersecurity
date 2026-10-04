@@ -162,9 +162,12 @@ After running the script, it successfully found a valid `PHPSESSID` and code:
 
 ![](images/valid_cookie_code.png)
 
-After that, I replaced my `PHPSESSID`, entered the valid code, and was able to reset the password. I reset the password, logged in, and obtained the first flag:
+After that, I replaced my `PHPSESSID`, entered the valid code, and was able to reset the password:
 
 ![](images/pass_reset.png)
+
+I changed the password and obtained the flag:
+
 ![](images/flag1.png)
 
 ---
