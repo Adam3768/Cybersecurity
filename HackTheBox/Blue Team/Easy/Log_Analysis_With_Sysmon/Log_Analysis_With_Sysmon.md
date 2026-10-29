@@ -22,21 +22,21 @@ I began by logging into the analyst machine via RDP and unzipping the provided f
 
 First, I filtered the logs by Event ID = 1 to see which processes were created. I noticed that the user `Gabr` started the `IDM.exe` process:
 
-![](idmexe_log.png)
+![](images/idmexe_log.png)
 
 `IDM.exe` (IDM — Internet Download Manager) is a paid program that accelerates file downloads by breaking them into smaller pieces and downloading those pieces simultaneously. The program itself isn't malicious, but it enables file downloads, which could be how the breach happened. Next, I found another interesting log: `IDM` launched `cmd.exe`, which is very suspicious behaviour:
 
-![](cmd_idm.png)
+![](images/cmd_idm.png)
 
 To confirm that `IDM.exe` started the breach, I checked which files it had downloaded or created. Filtering logs with Event ID = 11 (File Creation) showed that `IDM.exe` downloaded `mimikatz.exe`, confirming that this program started the attack:
 
-![](mimikatz.png)
+![](images/mimikatz.png)
 
 ## Q2: What did the attacker use to bypass UAC?
 
 I filtered logs by parent process ID 8992 to see which processes were created by the `cmd.exe` launched from `IDM`. This led me to the process most likely used for privilege escalation:
 
-![](fodhelper.png)
+![](images/fodhelper.png)
 
 It launched `fodhelper.exe`. Normally, `fodhelper.exe` is a legitimate Windows executable used for a few different purposes. What matters here is that it can run with escalated privileges without triggering a UAC prompt. For example, on startup, `fodhelper.exe` checks the system registry to determine how to open files or protocols related to optional Windows features, such as `ms-settings`. An attacker can create the following registry key structure: `HKEY_CURRENT_USER\Software\Classes\ms-settings\Shell\Open\command`, and set its values so that when `fodhelper.exe` starts (running as Administrator) and reads the attacker's registry key, it opens, for example, a command prompt for the attacker with escalated privileges. [More about it here](https://www.elastic.co/security-labs/threat-command/exploring-windows-uac-bypasses-techniques-and-detection-strategies).
 
@@ -44,7 +44,7 @@ It launched `fodhelper.exe`. Normally, `fodhelper.exe` is a legitimate Windows e
 
 To find the registry path used when escalating privileges via `fodhelper.exe`, I filtered the logs by Event ID = 13 to see which registry value was modified. I quickly found the answer:
 
-![](registry_changed.png)
+![](images/registry_changed.png)
 
 So the attacker used `HKCU:\Software\Classes\ms-settings\shell\open\command` with the value `sEpQhpkr`.
 
@@ -52,13 +52,13 @@ So the attacker used `HKCU:\Software\Classes\ms-settings\shell\open\command` wit
 
 In **Q2**, I found that the attacker downloaded `mimikatz.exe` for credential collection:
 
-![](mimikatz.png)
+![](images/mimikatz.png)
 
 ## Q5: What are the technique name and ID used by the dropped EXE?
 
 [MITRE ATT&CK](https://attack.mitre.org/software/S0002/) describes `mimikatz` as *"a credential dumper capable of obtaining plaintext Windows account logins and passwords, along with many other features that make it useful for testing the security of networks."* So the technique name is `Credential Dumping`, with ID T1003.
 
-![](mtrattck.png)
+![](images/mtrattck.png)
 
 ## Q6: What is the name of the attack?
 
@@ -68,7 +68,7 @@ In **Q2**, I found that the attacker downloaded `mimikatz.exe` for credential co
 
 I searched for processes started by `mimikatz.exe` and quickly found that it launched `powershell.exe`:
 
-![](ps.png)
+![](images/ps.png)
 
 This log confirmed that PowerShell was started with high privileges, because of the `IntegrityLevel High` entry. `IntegrityLevel` is a Windows mechanism that controls what a process is allowed to do, and a value of `High` means the process is essentially running with Administrator privileges. [Official Windows Documentation](https://learn.microsoft.com/en-us/windows/win32/secauthz/mandatory-integrity-control)
 
@@ -76,11 +76,11 @@ This log confirmed that PowerShell was started with high privileges, because of 
 
 Filtering logs by Event ID 11 turned up one interesting file creation:
 
-![](file_download.png)
+![](images/file_download.png)
 
 A `.exe` file with a very long name was downloaded via PowerShell, roughly two minutes after `mimikatz` was launched. I wasn't able to determine what the file was used for. I also found the exact command line used to download it:
 
-![](ps_download.png)
+![](images/ps_download.png)
 
 PowerShell used `Invoke-WebRequest` to download the file, and `Start-Process` along with `-WindowStyle Hidden` to run it without opening a visible PowerShell window.
 
