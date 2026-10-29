@@ -87,3 +87,4 @@ PowerShell used `Invoke-WebRequest` to download the file, and `Start-Process` al
 ## Summary
 
 The breach started with `IDM` launching `cmd.exe` and abusing the `fodhelper.exe` binary. I didn't have enough information to determine exactly why this happened, but the most likely scenario is that the user had installed a malicious `IDM` browser extension. After escalating privileges, `mimikatz` was downloaded to collect credentials and other valuable system information. Finally, the attacker downloaded and ran another `.exe` file, probably a backdoor.
+> Thanks for reading!

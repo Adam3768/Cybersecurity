@@ -56,7 +56,7 @@ I ran **Feroxbuster** and **Gobuster** in parallel against the web root, which s
 /skins/
 ```
 
-![Ferox Scan](TryHackMe/Medium/Support/images/ferox_scan.png)
+![Ferox Scan](images/ferox_scan.png)
 ![Gobuster Scan](images/gobuster_scan.png)
 
 ---
@@ -179,7 +179,7 @@ With arbitrary command execution confirmed, I used it to get a reverse shell: pr
 
 That gave me an interactive shell, and with it, the user flag.
 
-![User Flag](images/user_flag.pngimages/user_flag.png)
+![User Flag](images/user_flag.png)
 
 ---
 

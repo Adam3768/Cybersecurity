@@ -104,7 +104,7 @@ ip=%0Awhoami
 
 Intercepting and tweaking the request in **Burp Suite** confirmed the injected command actually ran — an **OS command injection** in the `ip` parameter that the character blacklist simply hadn't accounted for.
 
-![Command Injection PoC](images/rce_poc.png)
+![Command Injection PoC](images/RCE_poc.png)
 
 From there, I used the injection to pop a reverse shell:
 

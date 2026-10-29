@@ -10,7 +10,7 @@ Every request has to go through someone... but what if that someone is you? Rout
 
 I started with an nmap scan:
 
-![Nmap scan](TryHackMe/Easy/Proxy/images/nmap_scan.png)
+![Nmap scan](images/nmap_scan.png)
 
 SMB was open on port `445`, so I checked whether it allowed null sessions. It did, and I was able to list all the shares:
 
