@@ -38,10 +38,6 @@ nmap MACHINE_IP -p 22,80,139,445 -sV -sC
 
 The interesting bit here was that **SMB message signing was enabled but not required**. In my experience that's often a sign the server also allows anonymous (null) sessions, so it was worth checking right away.
 
----
-
-## SMB Enumeration
-
 Sure enough, a null-session listing confirmed anonymous access was allowed:
 
 ```bash
@@ -69,7 +65,7 @@ Only one file was sitting there:
 msg_for_administrator.txt
 ```
 
-I grabbed it with `get` and had a read:
+I grabbed it with `get` and read the contents:
 
 ```text
 Dear Administrator,
